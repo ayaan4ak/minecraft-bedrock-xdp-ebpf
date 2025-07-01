@@ -32,7 +32,11 @@ func main() {
 	}
 
 	go mitigation.Start(coll)
-	go analytics.Init(coll, cfg.Prometheus.Bind, cfg.Prometheus.Enabled, cfg.Prometheus.Pop)
+	interval := 5
+	if cfg.Stats.Interval > 0 {
+		interval = cfg.Stats.Interval
+	}
+	go analytics.Init(coll, cfg.Prometheus.Bind, cfg.Prometheus.Enabled, cfg.Prometheus.Pop, interval)
 
 	select {}
 }

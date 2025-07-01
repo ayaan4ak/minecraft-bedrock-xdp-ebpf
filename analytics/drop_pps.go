@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"time"
-
 	xdp "bedrock-xdp/xdp_utils"
 
 	"github.com/cilium/ebpf"
@@ -18,14 +16,10 @@ var (
 func StartDroppedPPS(Collection *ebpf.Collection) {
 	udpDropPPS = xdp.GetMap("udp_drop_pps", Collection)
 	otherDropPPS = xdp.GetMap("other_drop_pps", Collection)
-
-	ticker := time.NewTicker(1 * time.Second)
-	for range ticker.C {
-		resetDropCount()
-	}
 }
 
-func resetDropCount() {
+// ResetDropPPS clears dropped packet counters.
+func ResetDropPPS() {
 	var resetCount uint64 = 0
 	var totalKey uint32 = 0
 
@@ -43,10 +37,10 @@ func resetDropCount() {
 func GetTotalDroppedPPS(check string) uint64 {
 	switch check {
 	case "udp":
-		return getMapTotalCount(udpDropPPS)
+		return getMapTotalCount(udpDropPPS) / uint64(StatIntervalSec)
 	case "other":
-		return getMapTotalCount(otherDropPPS)
+		return getMapTotalCount(otherDropPPS) / uint64(StatIntervalSec)
 	default:
-		return getMapTotalCount(udpDropPPS) + getMapTotalCount(otherDropPPS)
+		return (getMapTotalCount(udpDropPPS) + getMapTotalCount(otherDropPPS)) / uint64(StatIntervalSec)
 	}
 }

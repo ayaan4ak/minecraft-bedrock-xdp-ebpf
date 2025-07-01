@@ -26,4 +26,8 @@ type Config struct {
 		Blocktime int  `yaml:"blocktime"`
 		Global    bool `yaml:"global"`
 	} `yaml:"blocklist"`
+
+	Stats struct {
+		Interval int `yaml:"interval"`
+	} `yaml:"stats"`
 }

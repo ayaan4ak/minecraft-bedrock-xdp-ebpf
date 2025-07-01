@@ -11,7 +11,11 @@ import (
 
 // Init spawns routines to collect and expose BPF statistics.
 // Metrics have been simplified to reflect the new map layout: UDP and OTHER passes, and UDP drops.
-func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string) {
+func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string, intervalSec int) {
+
+	if intervalSec > 0 {
+		StatIntervalSec = intervalSec
+	}
 
 	//Traffic Analytics and Packet Counter logic should probably be reworked but what do you expect, this is open source.
 
@@ -37,17 +41,19 @@ func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string)
 
 	log.Printf("\033[36m[BEDROCK-XDP] \033[0mStarting Analytics...")
 	SetCollection(Collection)
-	go StartBPS(Collection)
-	go StartPPS(Collection)
 
-	go StartDroppedBPS(Collection)
-	go StartDroppedPPS(Collection)
+	// initialise map references only (no goroutine resets)
+	StartBPS(Collection)
+	StartPPS(Collection)
+	StartDroppedBPS(Collection)
+	StartDroppedPPS(Collection)
 
 	if prometheus {
 		StartPrometheus(bind)
 	}
 
 	ticker := time.NewTicker(1 * time.Second)
+	counterTick := 0
 	for range ticker.C {
 
 		// Gather pass statistics
@@ -101,5 +107,16 @@ func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string)
 		bcVal2 := GetBlockedCount()
 		log.Printf("\n")
 		log.Printf("\033[36m[ANALYTICS] \033[0mBlocked IPs: \033[36m%d\033[0m\n", bcVal2)
+
+		// After producing metrics, reset counters for next window if we've
+		// reached StatIntervalSec seconds since last reset.
+		counterTick++
+		if counterTick >= StatIntervalSec {
+			ResetPassBPS()
+			ResetPassPPS()
+			ResetDropBPS()
+			ResetDropPPS()
+			counterTick = 0
+		}
 	}
 }

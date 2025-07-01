@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"time"
-
 	xdp "bedrock-xdp/xdp_utils"
 
 	"github.com/cilium/ebpf"
@@ -18,14 +16,11 @@ var (
 func StartBPS(Collection *ebpf.Collection) {
 	udpBitMap = xdp.GetMap("udp_pass_bps", Collection)
 	otherBitMap = xdp.GetMap("other_pass_bps", Collection)
-
-	ticker := time.NewTicker(1 * time.Second)
-	for range ticker.C {
-		resetBitCount()
-	}
 }
 
-func resetBitCount() {
+// ResetPassBPS zeroes totals and per-IP buckets. Call once per interval **after**
+// reading the stats so analytics never observes a just-reset value.
+func ResetPassBPS() {
 	var resetCount uint64 = 0
 	var totalKey uint32 = 0
 
@@ -43,10 +38,10 @@ func resetBitCount() {
 func GetTotalBPS(protocol string) uint64 {
 	switch protocol {
 	case "udp":
-		return getMapTotalCount(udpBitMap)
+		return getMapTotalCount(udpBitMap) / uint64(StatIntervalSec)
 	case "other":
-		return getMapTotalCount(otherBitMap)
+		return getMapTotalCount(otherBitMap) / uint64(StatIntervalSec)
 	default:
-		return getMapTotalCount(udpBitMap) + getMapTotalCount(otherBitMap)
+		return (getMapTotalCount(udpBitMap) + getMapTotalCount(otherBitMap)) / uint64(StatIntervalSec)
 	}
 }

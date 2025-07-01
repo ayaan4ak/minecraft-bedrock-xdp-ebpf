@@ -112,6 +112,9 @@ blocklist:
   enabled: true # Enable blocklist
   blocktime: 60 # How many seconds to wait before cleaning the blocklist
   global: true # Drop all traffic from blocked IPs regardless of Protocol or Destination
+
+stats:
+  interval: 5 # Seconds – window over which PPS/BPS stats are aggregated
 ```
 
 ---

@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"log"
-	"time"
 
 	xdp "bedrock-xdp/xdp_utils"
 
@@ -19,14 +18,10 @@ var (
 func StartDroppedBPS(Collection *ebpf.Collection) {
 	udpDropBPS = xdp.GetMap("udp_drop_bps", Collection)
 	otherDropBPS = xdp.GetMap("other_drop_bps", Collection)
-
-	ticker := time.NewTicker(1 * time.Second)
-	for range ticker.C {
-		resetDropBitCount()
-	}
 }
 
-func resetDropBitCount() {
+// ResetDropBPS clears dropped bit counters.
+func ResetDropBPS() {
 	var resetCount uint64 = 0
 	var totalKey uint32 = 0
 
@@ -61,10 +56,10 @@ func resetByteCountMap(byteCountMap *ebpf.Map) {
 func GetTotalDroppedBPS(check string) uint64 {
 	switch check {
 	case "udp":
-		return getMapTotalCount(udpDropBPS)
+		return getMapTotalCount(udpDropBPS) / uint64(StatIntervalSec)
 	case "other":
-		return getMapTotalCount(otherDropBPS)
+		return getMapTotalCount(otherDropBPS) / uint64(StatIntervalSec)
 	default:
-		return getMapTotalCount(udpDropBPS) + getMapTotalCount(otherDropBPS)
+		return (getMapTotalCount(udpDropBPS) + getMapTotalCount(otherDropBPS)) / uint64(StatIntervalSec)
 	}
 }
