@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	log.Printf("\033[36m[BEDROCK-XDP] \033[0mStarting 1.0.0 \033[36m(By:\033[36m@upioti \033[0m- \033[36mhttps://papyrus.vip/\033[36m)\033[0m")
+	log.Printf("\033[36m[BEDROCK-XDP] \033[0mStarting v1.1.0 \033[36m(By:\033[36m@upioti \033[0m- \033[36mhttps://papyrus.vip/\033[36m)\033[0m")
 
 	if !fileExists("./config.yaml") {
 		config.Init()
@@ -32,10 +32,17 @@ func main() {
 	}
 
 	go mitigation.Start(coll)
+
+	// start analytics (stats + optional blocklist maintenance)
 	interval := 5
 	if cfg.Stats.Interval > 0 {
 		interval = cfg.Stats.Interval
 	}
+
+	if cfg.Blocklist.Enabled && cfg.Blocklist.Blocktime > 0 {
+		go analytics.StartBlockCounterReset(coll, cfg.Blocklist.Blocktime)
+	}
+
 	go analytics.Init(coll, cfg.Prometheus.Bind, cfg.Prometheus.Enabled, cfg.Prometheus.Pop, interval)
 
 	select {}

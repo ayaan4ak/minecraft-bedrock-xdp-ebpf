@@ -32,8 +32,6 @@ func Start(collection *ebpf.Collection) {
 	ratelimitLimit := xdp.GetMap("ratelimit_limit", collection)
 	ratelimitBlock := xdp.GetMap("ratelimit_block", collection)
 	ratelimitMap := xdp.GetMap("ratelimit_map", collection)
-	blocklistMap := xdp.GetMap("blocklist_map", collection)
-	blockCounter := xdp.GetMap("block_counter", collection)
 	if protectedMap == nil {
 		log.Printf("[MITIGATION] protected_map not found in BPF collection")
 		return
@@ -82,33 +80,21 @@ func Start(collection *ebpf.Collection) {
 		}()
 	}
 
-	// periodic blocklist flush according to config
-	if cfg.Blocklist.Enabled && cfg.Blocklist.Blocktime > 0 && blocklistMap != nil {
-		interval := time.Duration(cfg.Blocklist.Blocktime) * time.Second
+	// periodic blocklist flush (deletion only – counter reset handled in analytics)
+	if cfg.Blocklist.Enabled && cfg.Blocklist.Blocktime > 0 {
+		blocklistMap := collection.Maps["blocklist_map"]
+		if blocklistMap == nil {
+			return
+		}
+
 		go func() {
-			ticker := time.NewTicker(interval)
+			ticker := time.NewTicker(time.Duration(cfg.Blocklist.Blocktime) * time.Second)
 			for range ticker.C {
 				var ip uint32
 				var v uint8
 				iter := blocklistMap.Iterate()
 				for iter.Next(&ip, &v) {
 					blocklistMap.Delete(&ip)
-				}
-				// Update counter to reflect current number of keys
-				if blockCounter != nil {
-					var k uint32 = 0
-					// recount remaining keys in map (should be 0 unless new
-					// IPs were added during the flush window)
-					var rem uint64 = 0
-					if blocklistMap != nil {
-						var key uint32
-						var val uint8
-						it2 := blocklistMap.Iterate()
-						for it2.Next(&key, &val) {
-							rem++
-						}
-					}
-					_ = blockCounter.Update(&k, &rem, ebpf.UpdateAny)
 				}
 			}
 		}()

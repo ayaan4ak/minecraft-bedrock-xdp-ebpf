@@ -41,7 +41,7 @@ protection:
 #The blocklist feature will drop all further traffic from an IP after it has sent an invalid raknet packet
 blocklist:
   enabled: true # Enable blocklist
-  blocktime: 60 # How many seconds to wait before cleaning the blocklist
+  blocktime: 60 # How many seconds to wait before cleaning the blocklist (0 For permanent, not recommended)
   global: true # Drop all traffic from blocked IPs regardless of Protocol or Destination
 
 stats:

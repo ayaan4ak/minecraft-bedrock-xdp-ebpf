@@ -40,7 +40,7 @@ func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string,
 	)
 
 	log.Printf("\033[36m[BEDROCK-XDP] \033[0mStarting Analytics...")
-	SetCollection(Collection)
+	StartBlocklist(Collection)
 
 	// initialise map references only (no goroutine resets)
 	StartBPS(Collection)
@@ -93,7 +93,7 @@ func Init(Collection *ebpf.Collection, bind string, prometheus bool, pop string,
 
 		// Console output
 		log.Printf("\033c")
-		log.Printf("\033[36m[BEDROCK-XDP] \033[0mRunning v1.0.0 \033[36m(By:\033[36m@upioti \033[0m- \033[36mhttps://papyrus.vip/\033[36m)\033[0m")
+		log.Printf("\033[36m[BEDROCK-XDP] \033[0mRunning v1.1.0 \033[36m(By:\033[36m@upioti \033[0m- \033[36mhttps://papyrus.vip/\033[36m)\033[0m")
 		log.Printf("\n")
 		log.Printf("\033[36m[ANALYTICS] \033[0mPassed traffic statistics:\033[0m\n")
 		log.Printf("\033[36m[ANALYTICS] \033[0mPassed Packets: \033[36m%s/s\033[0m\n", utils.FormatWithCommas(pass_pps))
