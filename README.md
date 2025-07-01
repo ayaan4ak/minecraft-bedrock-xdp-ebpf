@@ -136,7 +136,7 @@ Combine them with counters from other nodes for a cluster-wide view.
 ## Credits
 
 * Built with ❤️ using [**cilium/ebpf**](https://github.com/cilium/ebpf) and the Linux eBPF toolchain.
-* Special thanks to @Outfluencer for the inspiration to release a bedrock filter, check out his [MC Java Appfilter](https://github.com/Outfluencer/Minecraft-XDP-eBPF/issues)
+* Special thanks to [@Outfluencer](https://github.com/Outfluencer) for the inspiration to release a bedrock filter, check out his [MC Java Appfilter](https://github.com/Outfluencer/Minecraft-XDP-eBPF/issues)
 * LLMs For making development much faster (Did this in like 3 hours, please dont complain if some modules were edited by AI)
 
 
