@@ -11,6 +11,7 @@ Effectively drops all non-raknet traffic targetting protected ports, features ra
 
 
 *Please follow the LICENCE accordingly, if you are interested in running this in a comercial enviroment contact me.*
+*Also check out [Papyrus](https://papyrus.vip/)
 
 ## Pull Requests are welcome!
 
