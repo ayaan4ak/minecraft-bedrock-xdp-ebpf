@@ -114,6 +114,8 @@ blocklist:
 
 ## Metrics
 
+![Prometheus Metrics](assets/prometheus.png)
+
 When Prometheus is enabled the exporter provides these series:
 
 * `passed_pps{pop,protocol}` - Passed packets per second by protocol
@@ -133,7 +135,7 @@ Combine them with counters from other nodes for a cluster-wide view.
 ## Credits
 
 * Built with ❤️ using [**cilium/ebpf**](https://github.com/cilium/ebpf) and the Linux eBPF toolchain.
-* Special thanks to `@Outfluencer` for the inspiration to release a bedrock filter, check out his [MC Java Appfilter](https://github.com/Outfluencer/Minecraft-XDP-eBPF/issues)
+* Special thanks to @Outfluencer for the inspiration to release a bedrock filter, check out his [MC Java Appfilter](https://github.com/Outfluencer/Minecraft-XDP-eBPF/issues)
 * LLMs For making development much faster (Did this in like 3 hours, please dont complain if some modules were edited by AI)
 
 
