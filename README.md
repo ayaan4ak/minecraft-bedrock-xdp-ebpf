@@ -154,4 +154,4 @@ For a budget-friendly alternative for your small server, visit **[Arvoris](https
 
 ## License
 
-GPL-2.0.  See `LICENSE` file for details. 
+See `LICENSE` file for details. 
