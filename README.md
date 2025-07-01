@@ -1,6 +1,6 @@
 # Bedrock-XDP
 
-Bedrock-XDP is a high-performance **eBPF/XDP Stateless DDoS-mitigation Appfilter** written in Go and C.  
+A high-performance **eBPF/XDP Stateless DDoS-mitigation Appfilter** written in Go and C.  
 It is laser-focused on protecting Raknet-based game services – especially **Minecraft: Bedrock Edition** (RakNet) – but can be deployed in front of any raknet service that needs lightning-fast packet filtering at the Linux kernel level.
 
 > **Powered by XDP:** packets are inspected *before* they hit the TCP/IP stack – typical mitigation latency is < 1 µs and filtering throughput is measured in **tens of millions of packets per second** on common server hardware.
