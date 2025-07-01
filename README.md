@@ -4,7 +4,7 @@ Bedrock-XDP is a high-performance **eBPF/XDP Stateless DDoS-mitigation Appfilter
 It is laser-focused on protecting Raknet-based game services – especially **Minecraft: Bedrock Edition** (RakNet) – but can be deployed in front of any raknet service that needs lightning-fast packet filtering at the Linux kernel level.
 
 > **Powered by XDP:** packets are inspected *before* they hit the TCP/IP stack – typical mitigation latency is < 1 µs and filtering throughput is measured in **tens of millions of packets per second** on common server hardware.
-*Raknet validation is currently stateless... this is open source, If you need a stateful filter contact me.*
+>*Raknet validation is currently stateless... this is open source, If you need a stateful filter contact me.*
 
 Effectively drops all non-raknet traffic targetting protected ports, features ratelimit and global blocklist to enhance DDoS mitigation capabilities
 
