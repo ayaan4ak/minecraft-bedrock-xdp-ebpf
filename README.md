@@ -29,7 +29,7 @@ Effectively drops all non-raknet traffic targetting protected ports, features ra
 | Reflection / amplification filters | • AMP source-port detection via known-ports map |
 | Application Filtering | • **RakNet** packet-ID and RakNet magic validation (verifier-safe) |
 | Observability | • Console dashboard |  
-| Prometheus metrics (PPS, BPS, dropped packets, blocked IPs) | Pretty graphs|
+| Prometheus metrics (PPS, BPS, dropped packets, blocked IPs) | • Pretty graphs|
 
 
 ---
