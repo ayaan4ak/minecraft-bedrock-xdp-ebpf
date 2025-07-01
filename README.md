@@ -21,16 +21,15 @@ Effectively drops all non-raknet traffic targetting protected ports, features ra
 
 | Category | What it does |
 |----------|--------------|
-| Traffic classification | • Early drop of non-IPv4 traffic  
-• Dedicated counters for **UDP** vs **OTHER** protocols |
-| Block- & allow-lists | • *Global* IPv4 blocklist flag  
-• Per-service protected bind list (IP/Port or wildcard) |
-| Rate limiting | • Per-IP PPS throttle with optional automatic block  
-• Map is purged every second |
-| Reflection / amplification filters | • AMP source-port detection via configurable port map |
-| Protocol sanity | • **RakNet** packet-ID and RakNet magic validation (verifier-safe) |
-| Observability | • Console dashboard  
-• Prometheus metrics (PPS, BPS, dropped packets, blocked IPs) |
+| Traffic classification | • Early drop of non-IPv4 traffic  |
+| Dedicated counters for **UDP** vs **OTHER** protocols | Distinguish traffic destinations |
+| Configurable Blocklist | • Drops traffic from identified malicious ips (toggeable) |
+| Per-service protected bind list (IP/Port or wildcard) | Enable filter on specific destinations |
+| Rate limiting | • Per-IP PPS throttle with optional automatic block  |
+| Reflection / amplification filters | • AMP source-port detection via known-ports map |
+| Application Filtering | • **RakNet** packet-ID and RakNet magic validation (verifier-safe) |
+| Observability | • Console dashboard |  
+| Prometheus metrics (PPS, BPS, dropped packets, blocked IPs) | Pretty graphs|
 
 
 ---
