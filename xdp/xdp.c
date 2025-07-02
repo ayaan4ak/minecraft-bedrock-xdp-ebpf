@@ -71,54 +71,108 @@ int xdp_main_prog(struct xdp_md* ctx) {
     switch (ip->protocol) {
         case IPPROTO_UDP:
         {
-            struct udphdr *udp; // Declare and initialize udp at the top of the block
-
 
 
             // Start Checks for UDP
-            if ((void *)ip + sizeof(*ip) <= data_end) {
-                udp = (struct udphdr *)((char *)ip + sizeof(*ip));
-                if ((void *)(udp + 1) > data_end) {
+            struct udphdr *udp = (void *)ip + sizeof(struct iphdr);
+            if ((void *)(udp + 1) > data_end) {
+                // Incomplete UDP header
+                update_pps_counts(&udp_drop_pps);
+                update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                return XDP_DROP;
+            }
+
+            /* Verify destination matches a protected bind */
+            __u64 key;
+            __u32 dst_ip_host = bpf_ntohl(ip->daddr); // host-order for consistency with userspace
+            __u16 dst_port_host = bpf_ntohs(udp->dest);
+            key = ((__u64)dst_ip_host << 16) | (__u64)dst_port_host;
+
+            __u8 *prot_val = bpf_map_lookup_elem(&protected_map, &key);
+            if (!prot_val) {
+                /* Check wildcard IP (0.0.0.0) for this port */
+                __u64 any_key = (__u64)dst_port_host; // upper 48 bits zero
+                prot_val = bpf_map_lookup_elem(&protected_map, &any_key);
+            }
+
+            if (!prot_val) {
+                // Count as OTHER pass (not protected traffic)
+                //Or should i count as udp?
+                update_pps_counts(&other_pass_pps);
+                update_bps_counts(&other_pass_bps, pkt_size_bits);
+                return XDP_PASS;
+            }
+
+            /* Drop packets whose source port matches known amp srcports */
+            if (ampcheck(bpf_ntohs(udp->source))) {
+                update_pps_counts(&udp_drop_pps);
+                update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                return XDP_DROP;
+            }
+
+            if (blocklist_should_drop(src_ip_bl, true)) {
+                update_pps_counts(&udp_drop_pps);
+                update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                return XDP_DROP;
+            }
+
+            
+            /* RakNet validation */
+            // Ensure minimal payload size (3 bytes)
+            __u8 *payload_start = (__u8 *)(udp + 1);
+            if ((void *)payload_start < data_end) {
+                if ((void *)(payload_start + 3) > data_end) {
                     update_pps_counts(&udp_drop_pps);
                     update_bps_counts(&udp_drop_bps, pkt_size_bits);
-                    return XDP_DROP; // Incomplete UDP header
-                }
-
-                /* Verify destination matches a protected bind */
-                __u64 key;
-                __u32 dst_ip_host = bpf_ntohl(ip->daddr); // host-order for consistency with userspace
-                __u16 dst_port_host = bpf_ntohs(udp->dest);
-                key = ((__u64)dst_ip_host << 16) | (__u64)dst_port_host;
-
-                __u8 *prot_val = bpf_map_lookup_elem(&protected_map, &key);
-                if (!prot_val) {
-                    /* Check wildcard IP (0.0.0.0) for this port */
-                    __u64 any_key = (__u64)dst_port_host; // upper 48 bits zero
-                    prot_val = bpf_map_lookup_elem(&protected_map, &any_key);
-                }
-
-                if (!prot_val) {
-                    // Count as OTHER pass (not protected traffic)
-                    //Or should i count as udp?
-                    update_pps_counts(&other_pass_pps);
-                    update_bps_counts(&other_pass_bps, pkt_size_bits);
-                    return XDP_PASS;
-                }
-
-                if (blocklist_should_drop(src_ip_bl, true)) {
-                    update_pps_counts(&udp_drop_pps);
-                    update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                    __u32 src = ip->saddr;
+                    block_ip_if_new(src);
                     return XDP_DROP;
                 }
 
-                /* Drop packets whose source port matches known amp srcports */
-                if (ampcheck(bpf_ntohs(udp->source))) {
+                // Valid Raknet packet IDs list
+                __u8 pid = *payload_start;
+                bool pid_ok = false;
+                switch (pid) {
+                    case 0x00: case 0x01: case 0x02: case 0x05: case 0x07: case 0x09: case 0x13:
+                    case 0xc0:
+                        pid_ok = true; break;
+                    default:
+                        //Custom game packets
+                        if (pid >= 0x80 && pid <= 0xFE) pid_ok = true;
+                }
+                if (!pid_ok) {
                     update_pps_counts(&udp_drop_pps);
                     update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                    __u32 src = ip->saddr;
+                    block_ip_if_new(src);
                     return XDP_DROP;
                 }
 
-                
+                // Check magic if required (Some packets dont send it for whatever fuckass reason bruv)
+                bool magic_needed = true;
+                switch (pid) { case 0xc0: case 0x84: case 0x8c: case 0x09: case 0x88: case 0x80: case 0xa0: case 0x13: magic_needed = false; }
+                if (magic_needed) {
+                    if ((void *)(payload_start + 17) > data_end) {
+                        update_pps_counts(&udp_drop_pps); update_bps_counts(&udp_drop_bps, pkt_size_bits); 
+                        __u32 src = ip->saddr;
+                        block_ip_if_new(src);
+                        return XDP_DROP;
+                    }
+                    const unsigned char rak_magic[16] = {0x00,0xff,0xff,0x00,0xfe,0xfe,0xfe,0xfe,
+                                                        0xfd,0xfd,0xfd,0xfd,0x12,0x34,0x56,0x78};
+#pragma unroll
+                    for (int mi = 0; mi < 16; mi++) {
+                        if (*((unsigned char *)(payload_start + 1 + mi)) != rak_magic[mi]) {
+                            update_pps_counts(&udp_drop_pps);
+                            update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                            __u32 src = ip->saddr;
+                            block_ip_if_new(src);
+                            return XDP_DROP;
+                        }
+                    }
+                }
+
+                                
 
                 /* Rate-limit check per source IP */
                 __u32 rl_key = 0;
@@ -146,64 +200,12 @@ int xdp_main_prog(struct xdp_md* ctx) {
                     }
                 }
 
-                
-                /* RakNet validation */
-                // Ensure minimal payload size (3 bytes)
-                __u8 *payload_start = (__u8 *)(udp + 1);
-                if ((void *)payload_start < data_end) {
-                    if ((void *)(payload_start + 3) > data_end) {
-                        update_pps_counts(&udp_drop_pps);
-                        update_bps_counts(&udp_drop_bps, pkt_size_bits);
-                        __u32 src = ip->saddr;
-                        block_ip_if_new(src);
-                        return XDP_DROP;
-                    }
-
-                    // Valid Raknet packet IDs list
-                    __u8 pid = *payload_start;
-                    bool pid_ok = false;
-                    switch (pid) {
-                        case 0x00: case 0x01: case 0x02: case 0x05: case 0x07: case 0x09: case 0x13:
-                        case 0xc0:
-                            pid_ok = true; break;
-                        default:
-                            //Custom game packets
-                            if (pid >= 0x80 && pid <= 0xFE) pid_ok = true;
-                    }
-                    if (!pid_ok) {
-                        update_pps_counts(&udp_drop_pps);
-                        update_bps_counts(&udp_drop_bps, pkt_size_bits);
-                        __u32 src = ip->saddr;
-                        block_ip_if_new(src);
-                        return XDP_DROP;
-                    }
-
-                    // Check magic if required (Some packets dont send it for whatever fuckass reason bruv)
-                    bool magic_needed = true;
-                    switch (pid) { case 0xc0: case 0x84: case 0x8c: case 0x09: case 0x88: case 0x80: case 0xa0: case 0x13: magic_needed = false; }
-                    if (magic_needed) {
-                        if ((void *)(payload_start + 17) > data_end) {
-                            update_pps_counts(&udp_drop_pps); update_bps_counts(&udp_drop_bps, pkt_size_bits); 
-                            __u32 src = ip->saddr;
-                            block_ip_if_new(src);
-                            return XDP_DROP;
-                        }
-                        const unsigned char rak_magic[16] = {0x00,0xff,0xff,0x00,0xfe,0xfe,0xfe,0xfe,
-                                                            0xfd,0xfd,0xfd,0xfd,0x12,0x34,0x56,0x78};
-#pragma unroll
-                        for (int mi = 0; mi < 16; mi++) {
-                            if (*((unsigned char *)(payload_start + 1 + mi)) != rak_magic[mi]) {
-                                update_pps_counts(&udp_drop_pps);
-                                update_bps_counts(&udp_drop_bps, pkt_size_bits);
-                                __u32 src = ip->saddr;
-                                block_ip_if_new(src);
-                                return XDP_DROP;
-                            }
-                        }
-                    }
-                }
-
-
+            } else {
+                update_pps_counts(&udp_drop_pps);
+                update_bps_counts(&udp_drop_bps, pkt_size_bits);
+                __u32 src = ip->saddr;
+                block_ip_if_new(src);
+                return XDP_DROP;
             }
 
             update_pps_counts(&udp_pass_pps);
